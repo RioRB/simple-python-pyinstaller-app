@@ -21,15 +21,16 @@ node{
         input message: 'Lanjutkan ke tahap Deploy?'
     }
     try{
-        stage('Deploy'){
-            docker.image('cdrx/pyinstaller-linux:python2').inside{
-                echo "ini udh masuk docker image"
-                checkout scm
-                echo "ini abis checkout scm"
-                sh 'pyinstaller --onefile sources/add2vals.py'
-                echo "ini abis command sh"
-                sleep 60
-                archiveArtifacts 'dist/add2vals'
+        withEnv(['VOLUME=$(pwd)/sources:/src','IMAGE=cdrx/pyinstaller-linux:python2']){
+                stage('Deploy'){
+                dir(path: env.BUILD_ID) { 
+                        checkout scm
+                        unstash(name: 'compiled-results') 
+                        sh "docker run --rm -v ${VOLUME} ${IMAGE} 'pyinstaller -F add2vals.py'" 
+
+                    }
+                archiveArtifacts "${env.BUILD_ID}/sources/dist/add2vals" 
+                sh "docker run --rm -v ${VOLUME} ${IMAGE} 'rm -rf build dist'"
             }
         }
     }catch(e){
